@@ -1,19 +1,44 @@
 var map = L.map('map').setView([48.0196, 66.9237], 5);
 var geojsonLayer;
 var csvDataGlobal;
-var districtLayers = {}; 
+var currentYear = '2025';
+var districtLayers = {}; // Объект для хранения ссылок на слои карты
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-// Функция группировки данных из CSV
-function groupByRegion(data) {
-    return data.reduce((acc, row) => {
-        // Если в CSV нет колонки Region, используем "Прочие"
-        let region = row.Region || "Другие регионы";
-        if (!acc[region]) acc[region] = [];
-        acc[region].push(row);
-        return acc;
-    }, {});
+function getColor(d) {
+    return d > 1000000 ? '#4a0000' : d > 500000  ? '#800026' : d > 300000  ? '#BD0026' :
+           d > 150000  ? '#E31A1C' : d > 80000   ? '#FC4E2A' : d > 40000   ? '#FD8D3C' :
+           d > 15000   ? '#FEB24C' : d > 5000    ? '#FED976' : d > 0       ? '#FFEDA0' : '#e0e0e0'; 
+}
+
+function parseCSV(text) {
+    const lines = text.split('\n');
+    const result = [];
+    const headers = lines[0].split(',').map(h => h.trim());
+    for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        const obj = {};
+        const currentline = lines[i].split(',');
+        for (let j = 0; j < headers.length; j++) {
+            obj[headers[j]] = currentline[j] ? currentline[j].trim() : "";
+        }
+        result.push(obj);
+    }
+    return result;
+}
+
+// Функция для перехода к району
+function zoomToDistrict(name) {
+    var layer = districtLayers[name];
+    if (layer) {
+        map.fitBounds(layer.getBounds()); // Приблизить к границам района
+        layer.openPopup(); // Открыть всплывающее окно
+        
+        // Подсветить временно
+        layer.setStyle({ weight: 5, color: '#666' });
+        setTimeout(() => { geojsonLayer.resetStyle(layer); }, 2000);
+    }
 }
 
 async function init() {
@@ -23,76 +48,46 @@ async function init() {
         csvDataGlobal = parseCSV(csvText); 
         const geojsonData = await geoRes.json();
 
-        const container = document.getElementById('items-container');
-        container.innerHTML = '';
-
-        // Группируем районы по областям
-        const grouped = groupByRegion(csvDataGlobal);
-
-        // Создаем элементы в списке
-        Object.keys(grouped).sort().forEach(regionName => {
-            const groupDiv = document.createElement('div');
-            groupDiv.className = 'region-group';
-
-            const header = document.createElement('div');
-            header.className = 'region-header';
-            header.innerHTML = `<span>📍 ${regionName}</span>`;
-            groupDiv.appendChild(header);
-
-            const itemsDiv = document.createElement('div');
-            itemsDiv.className = 'region-content';
-
-            grouped[regionName].sort((a, b) => a.District.localeCompare(b.District)).forEach(row => {
-                const item = document.createElement('div');
-                // Если в названии есть "City" или "г.", выделяем визуально
-                const isCity = row.District.toLowerCase().includes('city') || row.District.toLowerCase().includes('г.');
-                item.className = `district-item ${isCity ? 'city-item' : ''}`;
-                item.innerText = row.District;
-                item.onclick = () => zoomToDistrict(row.District);
-                itemsDiv.appendChild(item);
-            });
-
-            groupDiv.appendChild(itemsDiv);
-            container.appendChild(groupDiv);
+        // Очищаем и заполняем список районов в сайдбаре
+        const listContainer = document.getElementById('items-container');
+        listContainer.innerHTML = '';
+        
+        // Сортируем названия по алфавиту
+        const sortedData = [...csvDataGlobal].sort((a, b) => a.District.localeCompare(b.District));
+        
+        sortedData.forEach(row => {
+            const item = document.createElement('div');
+            item.className = 'district-item';
+            item.innerText = row.District;
+            item.onclick = () => zoomToDistrict(row.District);
+            listContainer.appendChild(item);
         });
 
-        // Отрисовка карты (код остается прежним)
         geojsonLayer = L.geoJson(geojsonData, {
-            style: styleFeature,
-            onEachFeature: (feature, layer) => {
-                let dName = feature.properties.district || feature.properties.ADM2_EN;
-                districtLayers[dName] = layer;
-                layer.bindPopup(`<b>${dName}</b>`);
+            style: function(feature) {
+                var dName = feature.properties.district || feature.properties.ADM2_EN;
+                var row = csvDataGlobal.find(r => r.District === dName);
+                var value = row ? parseInt(row[currentYear]) : 0;
+                return { fillColor: getColor(value), weight: 0.5, color: 'black', fillOpacity: 0.7 };
+            },
+            onEachFeature: function(feature, layer) {
+                var dName = feature.properties.district || feature.properties.ADM2_EN;
+                districtLayers[dName] = layer; // Сохраняем слой в наш список
+
+                var row = csvDataGlobal.find(r => r.District === dName);
+                var value = row ? parseInt(row[currentYear]) : 0;
+                layer.bindPopup(`<b>Район:</b> ${dName}<br><b>Население:</b> ${value.toLocaleString()}`);
+                
+                layer.on({
+                    mouseover: function(e) { e.target.setStyle({ weight: 2, color: '#000' }); },
+                    mouseout: function(e) { geojsonLayer.resetStyle(e.target); }
+                });
             }
         }).addTo(map);
 
-    } catch (e) { console.error(e); }
-}
-
-function zoomToDistrict(name) {
-    var layer = districtLayers[name];
-    if (layer) {
-        map.fitBounds(layer.getBounds(), { padding: [50, 50] });
-        layer.openPopup();
-    } else {
-        alert("Район " + name + " не найден на карте");
+    } catch (e) {
+        console.error("Ошибка:", e);
     }
-}
-
-// Вспомогательная функция для CSV (та же, что была раньше)
-function parseCSV(text) {
-    const lines = text.split('\n');
-    const headers = lines[0].split(',').map(h => h.trim());
-    return lines.slice(1).filter(line => line.trim()).map(line => {
-        const values = line.split(',');
-        let obj = {};
-        headers.forEach((h, i) => obj[h] = values[i] ? values[i].trim() : "");
-        return obj;
-    });
-}
-
-function styleFeature(feature) {
-    return { weight: 0.5, color: 'black', fillColor: '#FEB24C', fillOpacity: 0.7 };
 }
 
 init();
