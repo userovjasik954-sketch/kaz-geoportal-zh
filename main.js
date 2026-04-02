@@ -91,3 +91,29 @@ async function init() {
 }
 
 init();
+// Возвращаем легенду
+var legend = L.control({position: 'bottomright'});
+
+legend.onAdd = function () {
+    var div = L.DomUtil.create('div', 'info legend');
+    var grades = [0, 15000, 40000, 80000, 150000, 300000, 500000, 1000000];
+    
+    // Стили прямо в JS для надежности
+    div.style.background = 'white'; 
+    div.style.padding = '10px'; 
+    div.style.borderRadius = '5px'; 
+    div.style.lineHeight = '18px';
+    div.style.boxShadow = '0 0 15px rgba(0,0,0,0.2)';
+    
+    div.innerHTML = '<b>Население</b><br>';
+
+    for (var i = 0; i < grades.length; i++) {
+        div.innerHTML += 
+            '<i style="background:' + getColor(grades[i] + 1) + '; width:18px; height:18px; float:left; margin-right:8px; opacity:0.7;"></i> ' +
+            grades[i].toLocaleString() + (grades[i + 1] ? '&ndash;' + grades[i + 1].toLocaleString() + '<br>' : '+');
+    }
+
+    return div;
+};
+
+legend.addTo(map);
