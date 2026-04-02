@@ -5,36 +5,31 @@
     <meta charset="utf-8" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body { margin: 0; padding: 10px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; display: flex; flex-direction: column; height: 100vh; }
-        .info-panel { background: #fff; padding: 15px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .main-container { display: flex; flex: 1; gap: 15px; overflow: hidden; }
+        body { margin: 0; padding: 10px; font-family: sans-serif; background: #f4f4f4; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
+        .info-panel { background: white; padding: 10px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         
-        #map { flex: 3; border-radius: 12px; border: 1px solid #ddd; height: 100%; }
+        /* Контейнер для карты и списка */
+        .main-container { display: flex; flex: 1; gap: 10px; overflow: hidden; }
         
-        /* Сайдбар с группировкой */
-        .sidebar { flex: 1; background: #fff; border-radius: 12px; border: 1px solid #ddd; overflow-y: auto; padding: 0; max-width: 320px; }
-        .sidebar h3 { padding: 15px; margin: 0; background: #f8f9fa; border-bottom: 1px solid #eee; font-size: 18px; }
+        #map { flex: 3; border: 2px solid #ccc; border-radius: 10px; height: 100%; }
         
-        .region-group { border-bottom: 1px solid #eee; }
-        .region-header { background: #e9ecef; padding: 10px 15px; font-weight: bold; cursor: pointer; display: flex; justify-content: space-between; }
-        .region-header:hover { background: #dee2e6; }
+        /* Стиль для боковой панели со списком */
+        .sidebar { flex: 1; background: white; border-radius: 10px; border: 2px solid #ccc; overflow-y: auto; padding: 10px; max-width: 300px; }
+        .district-item { padding: 8px; border-bottom: 1px solid #eee; cursor: pointer; transition: 0.2s; font-size: 14px; }
+        .district-item:hover { background: #e9ecef; color: #007bff; }
         
-        .district-item { padding: 8px 25px; cursor: pointer; font-size: 14px; border-bottom: 1px solid #f9f9f9; }
-        .district-item:hover { background: #f0f7ff; color: #007bff; }
-        
-        /* Особенный стиль для городов */
-        .city-item { font-weight: bold; color: #d63384; }
+        .legend i { width: 18px; height: 18px; float: left; margin-right: 8px; opacity: 0.8; }
     </style>
 </head>
 <body>
     <div class="info-panel">
-        <h1>Демографический мониторинг РК</h1>
+        <h1>Демографическая карта Казахстана (2025)</h1>
     </div>
     
     <div class="main-container">
-        <div class="sidebar">
-            <h3>Регионы и Города</h3>
-            <div id="items-container">Загрузка данных...</div>
+        <div class="sidebar" id="district-list">
+            <h3 style="margin-top:0">Список районов</h3>
+            <div id="items-container">Загрузка...</div>
         </div>
         <div id="map"></div>
     </div>
